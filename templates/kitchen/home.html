@@ -1,0 +1,11 @@
+
+{% extends "kitchen/base.html" %}
+{% block content %}
+<div class="p-4 bg-light rounded-3">
+  <h1 class="display-6">Kitchen Service</h1>
+  <p class="lead mb-1">Total dishes: {{ total_dishes }}</p>
+  <p class="lead mb-1">Total cooks: {{ total_cooks }}</p>
+  <p class="mb-0">Cheapest: {{ cheapest_dish }}</p>
+  <p class="mb-0">Most expensive: {{ most_expensive_dish }}</p>
+</div>
+{% endblock %}

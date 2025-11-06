@@ -1,0 +1,6 @@
+
+{% extends "kitchen/base.html" %}
+{% block content %}
+<h2>{{ ingredient.name }}</h2>
+<a class="btn btn-outline-danger" href="{% url 'ingredient_delete' ingredient.pk %}">Delete</a>
+{% endblock %}

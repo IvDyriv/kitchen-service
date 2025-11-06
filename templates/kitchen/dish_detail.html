@@ -1,0 +1,12 @@
+
+{% extends "kitchen/base.html" %}
+{% block content %}
+<h2>{{ dish.name }}</h2>
+<p>Type: {{ dish.dish_type }}</p>
+<p>Price: ${{ dish.price }}</p>
+<p>{{ dish.description }}</p>
+{% if dish.image %}<img src="{{ dish.image.url }}" class="img-fluid rounded"/>{% endif %}
+<p>Cooks: {% for c in dish.cooks.all %}{{ c.username }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</p>
+<p>Ingredients: {% for i in dish.ingredients.all %}{{ i.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</p>
+<a class="btn btn-outline-danger" href="{% url 'dish_delete' dish.pk %}">Delete</a>
+{% endblock %}

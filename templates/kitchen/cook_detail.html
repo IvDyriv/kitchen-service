@@ -1,0 +1,9 @@
+
+{% extends "kitchen/base.html" %}
+{% block content %}
+<h2>{{ cook.username }}</h2>
+<p>Name: {{ cook.first_name }} {{ cook.last_name }}</p>
+<p>Email: {{ cook.email }}</p>
+<p>Experience: {{ cook.years_of_experience }}</p>
+<p>Rating: {{ cook.rating }}</p>
+{% endblock %}

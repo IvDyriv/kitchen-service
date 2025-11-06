@@ -1,0 +1,10 @@
+
+{% extends "kitchen/base.html" %}
+{% block content %}
+<h3>Are you sure you want to delete "{{ object }}"?</h3>
+<form method="post">
+  {% csrf_token %}
+  <a href="javascript:history.back()" class="btn btn-secondary">Cancel</a>
+  <button class="btn btn-danger">Delete</button>
+</form>
+{% endblock %}
