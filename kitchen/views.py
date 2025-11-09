@@ -1,175 +1,191 @@
-
-from django.shortcuts import render, get_object_or_404, redirect
-from django.core.paginator import Paginator
-from django.db.models import Q
+from django.contrib import messages
+from django.contrib.auth import login
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse_lazy
+from django.views.generic import (
+    TemplateView, ListView, DetailView,
+    CreateView, UpdateView, DeleteView
+)
 from .models import Cook, Dish, Ingredient
 from .forms import CookCreationForm, CookChangeForm, DishForm, IngredientForm
-from django.contrib.auth import login
-from django.contrib import messages
 
 
+class HomeView(TemplateView):
+    template_name = "kitchen/home.html"
 
-def home(request):
-    total_dishes = Dish.objects.count()
-    total_cooks = Cook.objects.count()
-    cheapest_dish = Dish.objects.order_by("price").first()
-    most_expensive_dish = Dish.objects.order_by("-price").first()
-    return render(request, "kitchen/home.html", {
-        "total_dishes": total_dishes,
-        "total_cooks": total_cooks,
-        "cheapest_dish": cheapest_dish,
-        "most_expensive_dish": most_expensive_dish,
-    })
-
-def cook_list(request):
-    q = request.GET.get("q", "").strip()
-    cooks = Cook.objects.all()
-
-    if q:
-        cooks = cooks.filter(
-            Q(username__icontains=q)
-            | Q(first_name__icontains=q)
-            | Q(last_name__icontains=q)
-            | Q(email__icontains=q)
-        )
-
-    page_obj = Paginator(cooks.order_by("username"), 10).get_page(request.GET.get("page"))
-    return render(
-        request,
-        "kitchen/cook_list.html",
-        {"page_obj": page_obj, "q": q},
-    )
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["total_dishes"] = Dish.objects.count()
+        context["total_cooks"] = Cook.objects.count()
+        context["cheapest_dish"] = Dish.objects.order_by("price").first()
+        context["most_expensive_dish"] = Dish.objects.order_by("-price").first()
+        return context
 
 
-def cook_detail(request, pk):
-    cook = get_object_or_404(Cook, pk=pk)
-    return render(request, "kitchen/cook_detail.html", {"cook": cook})
+class CookListView(ListView):
+    model = Cook
+    template_name = "kitchen/cook_list.html"
+    context_object_name = "page_obj"
+    paginate_by = 10
 
-def cook_create(request):
-    if request.method == "POST":
-        form = CookCreationForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect("cook_list")
-    else:
-        form = CookCreationForm()
-    return render(request, "kitchen/cook_form.html", {"form": form})
+    def get_queryset(self):
+        q = self.request.GET.get("q", "").strip()
+        queryset = Cook.objects.all()
+        if q:
+            queryset = queryset.filter(
+                Q(username__icontains=q)
+                | Q(first_name__icontains=q)
+                | Q(last_name__icontains=q)
+                | Q(email__icontains=q)
+            )
+        return queryset.order_by("username")
 
-def cook_update(request, pk):
-    cook = get_object_or_404(Cook, pk=pk)
-    if request.method == "POST":
-        form = CookChangeForm(request.POST, instance=cook)
-        if form.is_valid():
-            form.save()
-            return redirect("cook_detail", pk=cook.pk)
-    else:
-        form = CookChangeForm(instance=cook)
-    return render(request, "kitchen/cook_form.html", {"form": form})
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["q"] = self.request.GET.get("q", "").strip()
+        return context
 
-def cook_delete(request, pk):
-    cook = get_object_or_404(Cook, pk=pk)
-    if request.method == "POST":
-        cook.delete()
-        return redirect("cook_list")
-    return render(request, "kitchen/confirm_delete.html", {"object": cook})
 
-def dish_list(request):
-    q = request.GET.get("q", "").strip()
-    sort = request.GET.get("sort", "")
-    dishes = Dish.objects.select_related("dish_type").prefetch_related("cooks", "ingredients")
-    if q:
-        dishes = dishes.filter(name__icontains=q)
-    if sort == "name_asc":
-        dishes = dishes.order_by("name")
-    elif sort == "name_desc":
-        dishes = dishes.order_by("-name")
-    elif sort == "price_asc":
-        dishes = dishes.order_by("price")
-    elif sort == "price_desc":
-        dishes = dishes.order_by("-price")
-    page_obj = Paginator(dishes, 10).get_page(request.GET.get("page"))
-    return render(request, "kitchen/dish_list.html", {"page_obj": page_obj, "q": q, "sort": sort})
+class CookDetailView(DetailView):
+    model = Cook
+    template_name = "kitchen/cook_detail.html"
+    context_object_name = "cook"
 
-def dish_detail(request, pk):
-    dish = get_object_or_404(Dish.objects.select_related("dish_type").prefetch_related("cooks", "ingredients"), pk=pk)
-    return render(request, "kitchen/dish_detail.html", {"dish": dish})
 
-def dish_create(request):
-    if request.method == "POST":
-        form = DishForm(request.POST, request.FILES)
-        if form.is_valid():
-            dish = form.save()
-            return redirect("dish_detail", pk=dish.pk)
-    else:
-        form = DishForm()
-    return render(request, "kitchen/dish_form.html", {"form": form})
+class CookCreateView(CreateView):
+    model = Cook
+    form_class = CookCreationForm
+    template_name = "kitchen/cook_form.html"
+    success_url = reverse_lazy("cook_list")
 
-def dish_update(request, pk):
-    dish = get_object_or_404(Dish, pk=pk)
-    if request.method == "POST":
-        form = DishForm(request.POST, request.FILES, instance=dish)
-        if form.is_valid():
-            form.save()
-            return redirect("dish_detail", pk=dish.pk)
-    else:
-        form = DishForm(instance=dish)
-    return render(request, "kitchen/dish_form.html", {"form": form})
 
-def dish_delete(request, pk):
-    dish = get_object_or_404(Dish, pk=pk)
-    if request.method == "POST":
-        dish.delete()
-        return redirect("dish_list")
-    return render(request, "kitchen/confirm_delete.html", {"object": dish})
+class CookUpdateView(UpdateView):
+    model = Cook
+    form_class = CookChangeForm
+    template_name = "kitchen/cook_form.html"
 
-def ingredient_list(request):
-    q = request.GET.get("q", "").strip()
-    ingredients = Ingredient.objects.all()
-    if q:
-        ingredients = ingredients.filter(name__icontains=q)
-    page_obj = Paginator(ingredients.order_by("name"), 10).get_page(request.GET.get("page"))
-    return render(request, "kitchen/ingredient_list.html", {"ingredients": page_obj, "q": q})
+    def get_success_url(self):
+        return reverse_lazy("cook_detail", kwargs={"pk": self.object.pk})
 
-def ingredient_detail(request, pk):
-    ingredient = get_object_or_404(Ingredient, pk=pk)
-    return render(request, "kitchen/ingredient_detail.html", {"ingredient": ingredient})
 
-def ingredient_create(request):
-    if request.method == "POST":
-        form = IngredientForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect("ingredient_list")
-    else:
-        form = IngredientForm()
-    return render(request, "kitchen/ingredient_form.html", {"form": form})
+class CookDeleteView(DeleteView):
+    model = Cook
+    template_name = "kitchen/confirm_delete.html"
+    success_url = reverse_lazy("cook_list")
 
-def ingredient_update(request, pk):
-    ingredient = get_object_or_404(Ingredient, pk=pk)
-    if request.method == "POST":
-        form = IngredientForm(request.POST, instance=ingredient)
-        if form.is_valid():
-            form.save()
-            return redirect("ingredient_detail", pk=ingredient.pk)
-    else:
-        form = IngredientForm(instance=ingredient)
-    return render(request, "kitchen/ingredient_form.html", {"form": form})
 
-def ingredient_delete(request, pk):
-    ingredient = get_object_or_404(Ingredient, pk=pk)
-    if request.method == "POST":
-        ingredient.delete()
-        return redirect("ingredient_list")
-    return render(request, "kitchen/confirm_delete.html", {"object": ingredient})
+class DishListView(ListView):
+    model = Dish
+    template_name = "kitchen/dish_list.html"
+    context_object_name = "page_obj"
+    paginate_by = 10
 
-def signup(request):
-    if request.method == "POST":
-        form = CookCreationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)  # автоматично логінемо після реєстрації
-            messages.success(request, "Account created. Welcome!")
-            return redirect("home")
-    else:
-        form = CookCreationForm()
-    return render(request, "kitchen/signup.html", {"form": form})
+    def get_queryset(self):
+        q = self.request.GET.get("q", "").strip()
+        sort = self.request.GET.get("sort", "")
+        queryset = Dish.objects.select_related("dish_type").prefetch_related("cooks", "ingredients")
+        if q:
+            queryset = queryset.filter(name__icontains=q)
+        if sort == "name_asc":
+            queryset = queryset.order_by("name")
+        elif sort == "name_desc":
+            queryset = queryset.order_by("-name")
+        elif sort == "price_asc":
+            queryset = queryset.order_by("price")
+        elif sort == "price_desc":
+            queryset = queryset.order_by("-price")
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["q"] = self.request.GET.get("q", "").strip()
+        context["sort"] = self.request.GET.get("sort", "")
+        return context
+
+
+class DishDetailView(DetailView):
+    model = Dish
+    template_name = "kitchen/dish_detail.html"
+    context_object_name = "dish"
+
+
+class DishCreateView(CreateView):
+    model = Dish
+    form_class = DishForm
+    template_name = "kitchen/dish_form.html"
+    success_url = reverse_lazy("dish_list")
+
+
+class DishUpdateView(UpdateView):
+    model = Dish
+    form_class = DishForm
+    template_name = "kitchen/dish_form.html"
+
+    def get_success_url(self):
+        return reverse_lazy("dish_detail", kwargs={"pk": self.object.pk})
+
+
+class DishDeleteView(DeleteView):
+    model = Dish
+    template_name = "kitchen/confirm_delete.html"
+    success_url = reverse_lazy("dish_list")
+
+
+class IngredientListView(ListView):
+    model = Ingredient
+    template_name = "kitchen/ingredient_list.html"
+    context_object_name = "ingredients"
+    paginate_by = 10
+
+    def get_queryset(self):
+        q = self.request.GET.get("q", "").strip()
+        queryset = Ingredient.objects.all()
+        if q:
+            queryset = queryset.filter(name__icontains=q)
+        return queryset.order_by("name")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["q"] = self.request.GET.get("q", "").strip()
+        return context
+
+
+class IngredientDetailView(DetailView):
+    model = Ingredient
+    template_name = "kitchen/ingredient_detail.html"
+    context_object_name = "ingredient"
+
+
+class IngredientCreateView(CreateView):
+    model = Ingredient
+    form_class = IngredientForm
+    template_name = "kitchen/ingredient_form.html"
+    success_url = reverse_lazy("ingredient_list")
+
+
+class IngredientUpdateView(UpdateView):
+    model = Ingredient
+    form_class = IngredientForm
+    template_name = "kitchen/ingredient_form.html"
+
+    def get_success_url(self):
+        return reverse_lazy("ingredient_detail", kwargs={"pk": self.object.pk})
+
+
+class IngredientDeleteView(DeleteView):
+    model = Ingredient
+    template_name = "kitchen/confirm_delete.html"
+    success_url = reverse_lazy("ingredient_list")
+
+
+class SignUpView(CreateView):
+    model = Cook
+    form_class = CookCreationForm
+    template_name = "kitchen/signup.html"
+    success_url = reverse_lazy("home")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        login(self.request, self.object)
+        messages.success(self.request, "Account created. Welcome!")
+        return response
