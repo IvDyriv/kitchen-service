@@ -1,10 +1,11 @@
-
 #!/usr/bin/env python
 import os
 import sys
+from dotenv import load_dotenv
 
 def main():
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'kitchen_service.settings')
+    load_dotenv()  # читає .env з кореня проєкту
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', os.getenv('DJANGO_SETTINGS_MODULE'))
     from django.core.management import execute_from_command_line
     execute_from_command_line(sys.argv)
 

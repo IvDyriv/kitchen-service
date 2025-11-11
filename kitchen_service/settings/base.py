@@ -1,14 +1,14 @@
-
 from pathlib import Path
-import os
+from decouple import config
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY",'dev-secret')
-DEBUG = False
-ALLOWED_HOSTS = ["127.0.0.1"]
-INSTALLED_APPS = []
+# SECURITY
+SECRET_KEY = config("SECRET_KEY", default="dev-secret")
+DEBUG = config("DEBUG", default=True, cast=bool)
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
 
+# APPLICATIONS
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -50,28 +50,49 @@ TEMPLATES = [
 WSGI_APPLICATION = 'kitchen_service.wsgi.application'
 ASGI_APPLICATION = 'kitchen_service.asgi.application'
 
+# DATABASE
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('POSTGRES_DB'),
+        'USER': config('POSTGRES_DB_USER'),
+        'PASSWORD': config('POSTGRES_PASSWORD'),
+        'HOST': config('POSTGRES_HOST'),
+        'PORT': config('POSTGRES_DB_PORT', default='5432'),
+        'OPTIONS': {
+            'sslmode': 'require',
+            'channel_binding': 'require',
+        },
     }
 }
 
-AUTH_PASSWORD_VALIDATORS = []
+# AUTH
+AUTH_USER_MODEL = 'kitchen.Cook'
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+]
 
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "home"
+
+# INTERNATIONALIZATION
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# STATIC & MEDIA
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# DEFAULTS
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-AUTH_USER_MODEL = 'kitchen.Cook'
-
-LOGIN_REDIRECT_URL = "home"
-LOGOUT_REDIRECT_URL = "home"
