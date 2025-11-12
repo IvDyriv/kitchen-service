@@ -3,6 +3,9 @@
 A Django web application for managing restaurant kitchen operations.  
 Cooks can add new dishes, assign themselves to dishes, and organize meals by type.
 
+## 🚀 Deployed Project
+You can view the live version here: [Kitchen Service on Render](https://kitchen-service-jk0h.onrender.com)
+
 ---
 
 ## 🧾 Description
